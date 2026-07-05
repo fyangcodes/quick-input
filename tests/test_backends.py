@@ -15,6 +15,8 @@ from quick_input.backends.windows_typing import (
     KEYEVENTF_KEYUP,
     KEYEVENTF_UNICODE,
     ULONG_PTR,
+    VK_CONTROL,
+    VK_V,
     WindowsTypingBackend,
     _surrogate_pair,
 )
@@ -97,6 +99,32 @@ def test_windows_typing_sends_supplementary_characters_as_surrogate_units():
 
     assert len(user32.calls) == 2
     assert [call[1][0].union.ki.wScan for call in user32.calls] == list(_surrogate_pair(0x1F680))
+
+
+def test_windows_typing_uses_paste_fallback_for_whitespace():
+    backend = WindowsTypingBackend.__new__(WindowsTypingBackend)
+    pasted = []
+    backend._paste_text = pasted.append
+
+    backend.type_text("A B")
+
+    assert pasted == ["A B"]
+
+
+def test_windows_typing_sends_ctrl_v_for_paste_fallback():
+    user32 = FakeUser32()
+    backend = WindowsTypingBackend.__new__(WindowsTypingBackend)
+    backend._user32 = user32
+    backend._inter_key_delay = 0
+
+    backend._send_ctrl_v()
+
+    assert len(user32.calls) == 1
+    count, inputs, size = user32.calls[0]
+    assert count == 4
+    assert size == ctypes.sizeof(INPUT)
+    assert [inputs[index].union.ki.wVk for index in range(4)] == [VK_CONTROL, VK_V, VK_V, VK_CONTROL]
+    assert [inputs[index].union.ki.dwFlags for index in range(4)] == [0, 0, KEYEVENTF_KEYUP, KEYEVENTF_KEYUP]
 
 
 def test_windows_typing_dw_extra_info_is_pointer_sized_integer():

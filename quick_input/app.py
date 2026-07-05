@@ -20,7 +20,7 @@ from quick_input.typer import TextTyper
 LOGGER = logging.getLogger(__name__)
 DEFAULT_TYPE_DELAY_SECONDS = 0.15
 PAUSE_HOTKEY = "ctrl+alt+p"
-QUIT_HOTKEY = "ctrl+alt+q"
+QUIT_HOTKEYS = ("ctrl+alt+esc",)
 
 
 @dataclass(frozen=True)
@@ -48,7 +48,7 @@ class QuickInputApp:
 
     def run(self) -> None:
         LOGGER.info("Quick Input starting")
-        LOGGER.info("Pause shortcut: %s; quit shortcut: %s", PAUSE_HOTKEY, QUIT_HOTKEY)
+        LOGGER.info("Pause shortcut: %s; quit shortcuts: %s", PAUSE_HOTKEY, ", ".join(QUIT_HOTKEYS))
         self._worker.start()
         try:
             self._hotkeys.run(self._callbacks())
@@ -67,7 +67,8 @@ class QuickInputApp:
     def _callbacks(self) -> dict[str, Callable[[str], None]]:
         callbacks = {hotkey: self._make_type_callback(hotkey) for hotkey in self._shortcuts}
         callbacks[PAUSE_HOTKEY] = self._toggle_pause
-        callbacks[QUIT_HOTKEY] = self._quit
+        for hotkey in QUIT_HOTKEYS:
+            callbacks[hotkey] = self._quit
         return callbacks
 
     def _make_type_callback(self, hotkey: str) -> Callable[[str], None]:
