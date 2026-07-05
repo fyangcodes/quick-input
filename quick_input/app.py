@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from quick_input.backends.base import HotkeyBackend, TypingBackend
-from quick_input.backends.select import select_backends
+from quick_input.backends.select import WINDOWS_TYPING_BACKENDS, select_backends
 from quick_input.config import DEFAULT_CONFIG_PATH, ConfigError, load_config
 from quick_input.hotkeys import HotkeyManager
 from quick_input.typer import TextTyper
@@ -27,6 +27,7 @@ QUIT_HOTKEYS = ("ctrl+alt+esc",)
 class AppOptions:
     config_path: Path = DEFAULT_CONFIG_PATH
     type_delay_seconds: float = DEFAULT_TYPE_DELAY_SECONDS
+    typing_backend: str = "pywinauto"
 
 
 class QuickInputApp:
@@ -106,7 +107,7 @@ class QuickInputApp:
 
 def build_app(options: AppOptions) -> QuickInputApp:
     config = load_config(options.config_path)
-    backends = select_backends()
+    backends = select_backends(windows_typing_backend=options.typing_backend)
     return QuickInputApp(
         shortcuts=config.shortcuts,
         hotkey_backend=backends.hotkeys,
@@ -122,6 +123,7 @@ def main(argv: list[str] | None = None) -> int:
     options = AppOptions(
         config_path=args.config,
         type_delay_seconds=args.delay,
+        typing_backend=args.typing_backend,
     )
 
     try:
@@ -153,6 +155,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=float,
         default=DEFAULT_TYPE_DELAY_SECONDS,
         help="Seconds to wait after a hotkey before typing.",
+    )
+    parser.add_argument(
+        "--typing-backend",
+        choices=WINDOWS_TYPING_BACKENDS,
+        default="pywinauto",
+        help="Windows typing backend to use.",
     )
     parser.add_argument(
         "-v",

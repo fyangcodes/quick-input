@@ -68,8 +68,8 @@ version = "1.8.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "evdev", marker = "'linux' in sys_platform" },
-    { name = "pyobjc-framework-applicationservices" },
-    { name = "pyobjc-framework-quartz" },
+    { name = "pyobjc-framework-applicationservices", marker = "sys_platform != 'win32'" },
+    { name = "pyobjc-framework-quartz", marker = "sys_platform != 'win32'" },
     { name = "python-xlib", marker = "'linux' in sys_platform" },
     { name = "six" },
 ]
@@ -238,7 +238,7 @@ name = "quick-input"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
-    { name = "pynput", marker = "sys_platform == 'darwin'" },
+    { name = "pynput", marker = "sys_platform == 'darwin' or sys_platform == 'win32'" },
     { name = "pywinauto", marker = "sys_platform == 'win32'" },
 ]
 
@@ -249,7 +249,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "pynput", marker = "sys_platform == 'darwin'", specifier = ">=1.7.7" },
+    { name = "pynput", marker = "sys_platform == 'darwin' or sys_platform == 'win32'", specifier = ">=1.7.7" },
     { name = "pywinauto", marker = "sys_platform == 'win32'", specifier = ">=0.6.8" },
 ]
 

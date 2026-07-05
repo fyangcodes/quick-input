@@ -6,6 +6,7 @@ import ctypes
 
 import pytest
 
+from quick_input.backends.pynput_typing import PynputTypingBackend
 from quick_input.backends.pywinauto_typing import PywinautoTypingBackend
 from quick_input.backends.select import select_backends
 from quick_input.backends.windows_hotkeys import MOD_CONTROL, MOD_NOREPEAT, parse_windows_hotkey
@@ -70,6 +71,32 @@ def test_select_backends_for_windows_uses_pywinauto_typing(monkeypatch):
 
     assert backends.hotkeys.__class__.__name__ == "WindowsHotkeyBackend"
     assert backends.typing.__class__.__name__ == "PywinautoTypingBackend"
+
+
+def test_select_backends_for_windows_can_use_pynput_typing(monkeypatch):
+    pynput = types.ModuleType("pynput")
+    keyboard = types.ModuleType("pynput.keyboard")
+
+    class Controller:
+        def type(self, text: str) -> None:
+            self.text = text
+
+    keyboard.Controller = Controller
+    pynput.keyboard = keyboard
+    monkeypatch.setitem(sys.modules, "pynput", pynput)
+    monkeypatch.setitem(sys.modules, "pynput.keyboard", keyboard)
+
+    backends = select_backends("Windows", windows_typing_backend="pynput")
+
+    assert backends.hotkeys.__class__.__name__ == "WindowsHotkeyBackend"
+    assert backends.typing.__class__.__name__ == "PynputTypingBackend"
+
+
+def test_select_backends_for_windows_can_use_win32_typing():
+    backends = select_backends("Windows", windows_typing_backend="win32")
+
+    assert backends.hotkeys.__class__.__name__ == "WindowsHotkeyBackend"
+    assert backends.typing.__class__.__name__ == "WindowsTypingBackend"
 
 
 class FakeUser32:
@@ -177,3 +204,22 @@ def test_pywinauto_typing_uses_packet_mode_to_preserve_literal_text():
             },
         )
     ]
+
+
+class FakeController:
+    def __init__(self) -> None:
+        self.typed = []
+
+    def type(self, text: str) -> None:
+        self.typed.append(text)
+
+
+def test_pynput_typing_types_text_after_modifier_release():
+    controller = FakeController()
+    backend = PynputTypingBackend.__new__(PynputTypingBackend)
+    backend._controller = controller
+    backend._wait_for_modifier_release = lambda: None
+
+    backend.type_text("A B")
+
+    assert controller.typed == ["A B"]
