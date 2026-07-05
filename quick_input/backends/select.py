@@ -16,12 +16,12 @@ def select_backends(system: str | None = None) -> BackendPair:
     platform_name = system or platform.system()
 
     if platform_name == "Windows":
+        from quick_input.backends.pywinauto_typing import PywinautoTypingBackend
         from quick_input.backends.windows_hotkeys import WindowsHotkeyBackend
-        from quick_input.backends.windows_typing import WindowsTypingBackend
 
         return BackendPair(
             hotkeys=WindowsHotkeyBackend(),
-            typing=WindowsTypingBackend(),
+            typing=PywinautoTypingBackend(),
         )
 
     if platform_name == "Darwin":

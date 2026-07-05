@@ -3,20 +3,21 @@ from __future__ import annotations
 import ctypes
 import logging
 import time
-from dataclasses import dataclass
 from ctypes import wintypes
 
 LOGGER = logging.getLogger(__name__)
 
-CF_UNICODETEXT = 13
-GMEM_MOVEABLE = 0x0002
 INPUT_KEYBOARD = 1
 KEYEVENTF_KEYUP = 0x0002
 KEYEVENTF_UNICODE = 0x0004
-PASTE_RESTORE_DELAY_SECONDS = 0.05
+MODIFIER_RELEASE_POLL_SECONDS = 0.01
 VK_CONTROL = 0x11
-VK_V = 0x56
+VK_MENU = 0x12
+VK_SHIFT = 0x10
+VK_LWIN = 0x5B
+VK_RWIN = 0x5C
 ULONG_PTR = wintypes.WPARAM
+MODIFIER_KEYS = (VK_CONTROL, VK_MENU, VK_SHIFT, VK_LWIN, VK_RWIN)
 
 
 class KEYBDINPUT(ctypes.Structure):
@@ -66,131 +67,34 @@ class INPUT(ctypes.Structure):
     ]
 
 
-@dataclass(frozen=True)
-class ClipboardSnapshot:
-    text: str | None
-
-
 class WindowsTypingBackend:
     def __init__(self, inter_key_delay: float = 0.0) -> None:
         self._user32 = ctypes.WinDLL("user32", use_last_error=True)
-        self._kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
         self._user32.SendInput.argtypes = [
             wintypes.UINT,
             ctypes.POINTER(INPUT),
             ctypes.c_int,
         ]
         self._user32.SendInput.restype = wintypes.UINT
-        self._configure_clipboard_api()
+        self._user32.GetAsyncKeyState.argtypes = [ctypes.c_int]
+        self._user32.GetAsyncKeyState.restype = wintypes.SHORT
         self._inter_key_delay = inter_key_delay
 
     def type_text(self, text: str) -> None:
-        if any(char.isspace() for char in text):
-            self._paste_text(text)
-            return
-
+        self._wait_for_modifier_release()
         for char in text:
             self._send_unicode_char(char)
             if self._inter_key_delay:
                 time.sleep(self._inter_key_delay)
 
-    def _configure_clipboard_api(self) -> None:
-        self._user32.OpenClipboard.argtypes = [wintypes.HWND]
-        self._user32.OpenClipboard.restype = wintypes.BOOL
-        self._user32.CloseClipboard.argtypes = []
-        self._user32.CloseClipboard.restype = wintypes.BOOL
-        self._user32.EmptyClipboard.argtypes = []
-        self._user32.EmptyClipboard.restype = wintypes.BOOL
-        self._user32.GetClipboardData.argtypes = [wintypes.UINT]
-        self._user32.GetClipboardData.restype = wintypes.HANDLE
-        self._user32.IsClipboardFormatAvailable.argtypes = [wintypes.UINT]
-        self._user32.IsClipboardFormatAvailable.restype = wintypes.BOOL
-        self._user32.SetClipboardData.argtypes = [wintypes.UINT, wintypes.HANDLE]
-        self._user32.SetClipboardData.restype = wintypes.HANDLE
-        self._kernel32.GlobalAlloc.argtypes = [wintypes.UINT, ctypes.c_size_t]
-        self._kernel32.GlobalAlloc.restype = wintypes.HGLOBAL
-        self._kernel32.GlobalLock.argtypes = [wintypes.HGLOBAL]
-        self._kernel32.GlobalLock.restype = ctypes.c_void_p
-        self._kernel32.GlobalUnlock.argtypes = [wintypes.HGLOBAL]
-        self._kernel32.GlobalUnlock.restype = wintypes.BOOL
-
-    def _paste_text(self, text: str) -> None:
-        snapshot = self._read_clipboard_text()
-        try:
-            self._set_clipboard_text(text)
-            self._send_ctrl_v()
-            time.sleep(PASTE_RESTORE_DELAY_SECONDS)
-        finally:
-            self._restore_clipboard(snapshot)
-
-    def _read_clipboard_text(self) -> ClipboardSnapshot:
-        self._open_clipboard()
-        try:
-            if not self._user32.IsClipboardFormatAvailable(CF_UNICODETEXT):
-                return ClipboardSnapshot(text=None)
-            handle = self._user32.GetClipboardData(CF_UNICODETEXT)
-            if not handle:
-                return ClipboardSnapshot(text=None)
-            locked = self._kernel32.GlobalLock(handle)
-            if not locked:
-                return ClipboardSnapshot(text=None)
-            try:
-                return ClipboardSnapshot(text=ctypes.wstring_at(locked))
-            finally:
-                self._kernel32.GlobalUnlock(handle)
-        finally:
-            self._user32.CloseClipboard()
-
-    def _set_clipboard_text(self, text: str | None) -> None:
-        self._open_clipboard()
-        try:
-            if not self._user32.EmptyClipboard():
-                raise OSError(ctypes.get_last_error(), "EmptyClipboard failed while typing text")
-            if text is None:
+    def _wait_for_modifier_release(self) -> None:
+        while True:
+            if not any(self._is_virtual_key_down(key) for key in MODIFIER_KEYS):
                 return
-            handle = self._global_alloc_unicode_text(text)
-            if not self._user32.SetClipboardData(CF_UNICODETEXT, handle):
-                raise OSError(ctypes.get_last_error(), "SetClipboardData failed while typing text")
-        finally:
-            self._user32.CloseClipboard()
+            time.sleep(MODIFIER_RELEASE_POLL_SECONDS)
 
-    def _restore_clipboard(self, snapshot: ClipboardSnapshot) -> None:
-        try:
-            self._set_clipboard_text(snapshot.text)
-        except OSError:
-            LOGGER.warning("Could not restore clipboard text after paste", exc_info=True)
-
-    def _global_alloc_unicode_text(self, text: str) -> int:
-        data = (text + "\0").encode("utf-16-le")
-        handle = self._kernel32.GlobalAlloc(GMEM_MOVEABLE, len(data))
-        if not handle:
-            raise OSError(ctypes.get_last_error(), "GlobalAlloc failed while typing text")
-        locked = self._kernel32.GlobalLock(handle)
-        if not locked:
-            raise OSError(ctypes.get_last_error(), "GlobalLock failed while typing text")
-        try:
-            ctypes.memmove(locked, data, len(data))
-        finally:
-            self._kernel32.GlobalUnlock(handle)
-        return handle
-
-    def _open_clipboard(self) -> None:
-        for _ in range(5):
-            if self._user32.OpenClipboard(None):
-                return
-            time.sleep(0.02)
-        raise OSError(ctypes.get_last_error(), "OpenClipboard failed while typing text")
-
-    def _send_ctrl_v(self) -> None:
-        inputs = (INPUT * 4)(
-            _keyboard_input(VK_CONTROL, 0, use_virtual_key=True),
-            _keyboard_input(VK_V, 0, use_virtual_key=True),
-            _keyboard_input(VK_V, KEYEVENTF_KEYUP, use_virtual_key=True),
-            _keyboard_input(VK_CONTROL, KEYEVENTF_KEYUP, use_virtual_key=True),
-        )
-        sent = self._user32.SendInput(len(inputs), inputs, ctypes.sizeof(INPUT))
-        if sent != len(inputs):
-            raise OSError(ctypes.get_last_error(), "SendInput failed while typing text")
+    def _is_virtual_key_down(self, virtual_key: int) -> bool:
+        return bool(self._user32.GetAsyncKeyState(virtual_key) & 0x8000)
 
     def _send_unicode_char(self, char: str) -> None:
         codepoint = ord(char)
@@ -208,6 +112,7 @@ class WindowsTypingBackend:
         sent = self._user32.SendInput(len(inputs), inputs, ctypes.sizeof(INPUT))
         if sent != len(inputs):
             raise OSError(ctypes.get_last_error(), "SendInput failed while typing text")
+
 
 def _keyboard_input(scan: int, flags: int, use_virtual_key: bool = False) -> INPUT:
     return INPUT(
