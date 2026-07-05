@@ -60,18 +60,18 @@ Decision summary: build the app around our own `HotkeyBackend` and `TypingBacken
 
 - [x] Create a Python project structure.
 - [x] Add dependency management with `requirements.txt` or `pyproject.toml`.
-- [ ] Implement a background hotkey listener.
-- [ ] Register `Ctrl+1` as the first shortcut.
-- [ ] Store shortcut text in a simple config file.
-- [ ] Type configured text into the currently focused field using keyboard events.
-- [ ] Add a small delay before typing so the hotkey release does not leak into the output.
-- [ ] Add a kill switch or pause shortcut.
-- [ ] Add logging for startup, registered shortcuts, and typing failures.
-- [ ] Document required OS permissions.
+- [x] Implement a background hotkey listener.
+- [x] Register `Ctrl+1` as the first shortcut.
+- [x] Store shortcut text in a simple config file.
+- [x] Type configured text into the currently focused field using keyboard events.
+- [x] Add a small delay before typing so the hotkey release does not leak into the output.
+- [x] Add a kill switch or pause shortcut.
+- [x] Add logging for startup, registered shortcuts, and typing failures.
+- [x] Document required OS permissions.
 
 ## No-Clipboard Acceptance Criteria
 
-- [ ] The app never calls copy, paste, `Ctrl+V`, `Cmd+V`, or clipboard APIs.
+- [x] The app never calls copy, paste, `Ctrl+V`, `Cmd+V`, or clipboard APIs.
 - [ ] The app still works when clipboard sharing is disabled in a remote desktop session.
 - [ ] Existing clipboard contents remain unchanged after using `Ctrl+1`.
 - [ ] Text appears as if typed from a keyboard in the active focused input.
@@ -101,20 +101,20 @@ Example config:
 
 ## Implementation Tasks
 
-- [ ] Create `quick_input/` package.
-- [ ] Create `quick_input/app.py` for startup and shutdown.
-- [ ] Create `quick_input/config.py` for loading shortcut mappings.
-- [ ] Create `quick_input/backends/base.py` with `HotkeyBackend` and `TypingBackend` protocols.
-- [ ] Create `quick_input/backends/windows_hotkeys.py` using Win32 `RegisterHotKey`.
-- [ ] Create `quick_input/backends/windows_typing.py` using Win32 `SendInput`.
-- [ ] Create `quick_input/backends/macos_dev.py` using `pynput` for local development only.
-- [ ] Create `quick_input/hotkeys.py` for backend-independent hotkey registration.
-- [ ] Create `quick_input/typer.py` for backend-independent text typing.
-- [ ] Create `shortcuts.json` sample config.
-- [ ] Add a command such as `python -m quick_input`.
-- [ ] Add basic tests for config parsing.
-- [ ] Add unit tests for backend selection.
-- [ ] Add a manual test checklist for local apps and remote desktop.
+- [x] Create `quick_input/` package.
+- [x] Create `quick_input/app.py` for startup and shutdown.
+- [x] Create `quick_input/config.py` for loading shortcut mappings.
+- [x] Create `quick_input/backends/base.py` with `HotkeyBackend` and `TypingBackend` protocols.
+- [x] Create `quick_input/backends/windows_hotkeys.py` using Win32 `RegisterHotKey`.
+- [x] Create `quick_input/backends/windows_typing.py` using Win32 `SendInput`.
+- [x] Create `quick_input/backends/macos_dev.py` using `pynput` for local development only.
+- [x] Create `quick_input/hotkeys.py` for backend-independent hotkey registration.
+- [x] Create `quick_input/typer.py` for backend-independent text typing.
+- [x] Create `shortcuts.json` sample config.
+- [x] Add a command such as `python -m quick_input`.
+- [x] Add basic tests for config parsing.
+- [x] Add unit tests for backend selection.
+- [x] Add a manual test checklist for local apps and remote desktop.
 
 ## Risks To Validate Early
 
@@ -139,7 +139,7 @@ Example config:
 
 ## Manual Test Checklist
 
-- [ ] On macOS development machine, run the `pynput` fallback and confirm config/hotkey routing works.
+- [ ] On macOS development machine, run the `pynput` fallback and confirm config/hotkey routing works. See `MANUAL_TEST_CHECKLIST.md`.
 - [ ] On Windows, run the Win32 backend and confirm `Ctrl+1` is registered.
 - [ ] Open a local text editor and press `Ctrl+1`; configured text is typed.
 - [ ] Put unique text in the clipboard, press `Ctrl+1`, then paste elsewhere; clipboard text is unchanged.

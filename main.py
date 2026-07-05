@@ -1,6 +1,5 @@
-def main():
-    print("Hello from quick-input!")
+from quick_input.app import main
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

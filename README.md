@@ -1,0 +1,52 @@
+# Quick Input
+
+Quick Input is a small background Python app that listens for global hotkeys and
+types configured text into the currently focused field using keyboard events. It
+does not use copy, paste, or the system clipboard.
+
+## Run
+
+Create or edit `shortcuts.json`:
+
+```json
+{
+  "ctrl+1": "Hello from Quick Input",
+  "ctrl+2": "Thanks, I will check and follow up."
+}
+```
+
+Start the app:
+
+```bash
+python -m quick_input --config shortcuts.json
+```
+
+Useful controls:
+
+- `Ctrl+1`, `Ctrl+2`, etc. type configured snippets.
+- `Ctrl+Alt+P` pauses or resumes snippet typing.
+- `Ctrl+Alt+Q` exits the app.
+- `--delay 0.15` controls the delay between hotkey detection and typing.
+- `--verbose` enables debug logging.
+
+## Platform Backends
+
+- Windows: native `RegisterHotKey` for global hotkeys and `SendInput` for
+  Unicode keyboard events.
+- macOS: `pynput` development fallback for local config and routing checks.
+
+## Required OS Permissions
+
+Windows usually does not require administrator permissions to register normal
+global hotkeys or send input to apps running at the same integrity level. Windows
+may block input into elevated applications from a non-elevated Quick Input
+process.
+
+macOS requires Accessibility permission for the terminal or packaged app that
+runs Quick Input. Grant it in System Settings, Privacy & Security,
+Accessibility. Depending on the environment, Input Monitoring permission may
+also be required.
+
+Remote desktop clients vary. The target remote desktop window must be focused,
+and the actual client should be tested because some clients filter synthetic
+keyboard events.
