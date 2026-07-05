@@ -1,12 +1,19 @@
 from __future__ import annotations
 
 import json
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 
-DEFAULT_CONFIG_PATH = Path("shortcuts.json")
+def default_config_path() -> Path:
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).with_name("shortcuts.json")
+    return Path("shortcuts.json")
+
+
+DEFAULT_CONFIG_PATH = default_config_path()
 
 
 class ConfigError(ValueError):

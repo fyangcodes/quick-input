@@ -21,6 +21,18 @@ Start the app:
 python -m quick_input --config shortcuts.json
 ```
 
+## Build EXE
+
+PyInstaller is included as a development dependency. Build a one-file Windows
+executable with:
+
+```bash
+uv run python scripts/build_exe.py
+```
+
+The build writes `dist/quick-input.exe` and copies `shortcuts.json` beside it.
+Edit `dist/shortcuts.json` directly to change shortcuts without rebuilding.
+
 Useful controls:
 
 - `Ctrl+1`, `Ctrl+2`, etc. type configured snippets.

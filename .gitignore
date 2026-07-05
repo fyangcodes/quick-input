@@ -2,9 +2,12 @@
 __pycache__/
 *.py[oc]
 build/
-dist/
 wheels/
 *.egg-info
+*.spec
+.uv-cache/
+.agents
+.pytest_cache
 
 # Virtual environments
 .venv

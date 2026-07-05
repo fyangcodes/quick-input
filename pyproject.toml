@@ -14,6 +14,7 @@ quick-input = "quick_input.app:main"
 
 [dependency-groups]
 dev = [
+    "pyinstaller>=6.14.2",
     "pytest>=8.0.0",
 ]
 
