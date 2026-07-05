@@ -10,6 +10,7 @@ LOGGER = logging.getLogger(__name__)
 INPUT_KEYBOARD = 1
 KEYEVENTF_KEYUP = 0x0002
 KEYEVENTF_UNICODE = 0x0004
+ULONG_PTR = wintypes.WPARAM
 
 
 class KEYBDINPUT(ctypes.Structure):
@@ -18,12 +19,38 @@ class KEYBDINPUT(ctypes.Structure):
         ("wScan", wintypes.WORD),
         ("dwFlags", wintypes.DWORD),
         ("time", wintypes.DWORD),
-        ("dwExtraInfo", ctypes.POINTER(wintypes.ULONG)),
+        ("dwExtraInfo", ULONG_PTR),
+    ]
+
+
+class MOUSEINPUT(ctypes.Structure):
+    _fields_ = [
+        ("dx", wintypes.LONG),
+        ("dy", wintypes.LONG),
+        ("mouseData", wintypes.DWORD),
+        ("dwFlags", wintypes.DWORD),
+        ("time", wintypes.DWORD),
+        ("dwExtraInfo", ULONG_PTR),
+    ]
+
+
+class HARDWAREINPUT(ctypes.Structure):
+    _fields_ = [
+        ("uMsg", wintypes.DWORD),
+        ("wParamL", wintypes.WORD),
+        ("wParamH", wintypes.WORD),
     ]
 
 
 class INPUT_UNION(ctypes.Union):
-    _fields_ = [("ki", KEYBDINPUT)]
+    _fields_ = [
+        ("mi", MOUSEINPUT),
+        ("ki", KEYBDINPUT),
+        ("hi", HARDWAREINPUT),
+    ]
+
+
+EXPECTED_INPUT_SIZE = 40 if ctypes.sizeof(ctypes.c_void_p) == 8 else 28
 
 
 class INPUT(ctypes.Structure):
@@ -36,6 +63,12 @@ class INPUT(ctypes.Structure):
 class WindowsTypingBackend:
     def __init__(self, inter_key_delay: float = 0.0) -> None:
         self._user32 = ctypes.WinDLL("user32", use_last_error=True)
+        self._user32.SendInput.argtypes = [
+            wintypes.UINT,
+            ctypes.POINTER(INPUT),
+            ctypes.c_int,
+        ]
+        self._user32.SendInput.restype = wintypes.UINT
         self._inter_key_delay = inter_key_delay
 
     def type_text(self, text: str) -> None:
@@ -57,7 +90,7 @@ class WindowsTypingBackend:
             _keyboard_input(unit, KEYEVENTF_UNICODE),
             _keyboard_input(unit, KEYEVENTF_UNICODE | KEYEVENTF_KEYUP),
         )
-        sent = self._user32.SendInput(len(inputs), ctypes.byref(inputs), ctypes.sizeof(INPUT))
+        sent = self._user32.SendInput(len(inputs), inputs, ctypes.sizeof(INPUT))
         if sent != len(inputs):
             raise OSError(ctypes.get_last_error(), "SendInput failed while typing text")
 
@@ -71,7 +104,7 @@ def _keyboard_input(scan: int, flags: int) -> INPUT:
                 wScan=scan,
                 dwFlags=flags,
                 time=0,
-                dwExtraInfo=None,
+                dwExtraInfo=0,
             )
         ),
     )
