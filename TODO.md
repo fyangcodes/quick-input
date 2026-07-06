@@ -24,13 +24,13 @@ Build a small Python desktop app that listens for global hotkeys such as `Ctrl+1
 
 ## Library And API Decision
 
-- Confirmed current approach: use `pynput` for global hotkeys and `pywinauto` for Windows typing by default.
-- Optional Windows typing path: `pynput`, selectable with `--typing-backend pynput`.
+- Confirmed current approach: use `pynput` for global hotkeys and Windows typing by default.
+- Optional Windows typing path: `pywinauto`, selectable with `--typing-backend pywinauto`.
 - Preferred macOS development fallback: `pynput`, only to exercise config, hotkey routing, and basic typing locally.
 - Avoid using `keyboard` as the main app dependency even though its API is convenient, because its latest PyPI release is old and macOS support is experimental.
 - Avoid using `pyautogui` as the hotkey layer; it can type, but it is not the right primitive for global hotkeys.
 
-Decision summary: build the app around our own `HotkeyBackend` and `TypingBackend` interfaces. Use `pynput` for hotkeys and keep Windows typing selectable between `pywinauto` and `pynput`.
+Decision summary: build the app around our own `HotkeyBackend` and `TypingBackend` interfaces. Use `pynput` for hotkeys and typing by default, with `pywinauto` kept as an alternate typing backend.
 
 ## Confirmed Background Behavior
 
@@ -74,7 +74,7 @@ Decision summary: build the app around our own `HotkeyBackend` and `TypingBacken
 2. Detect the current platform.
 3. Load shortcuts from `shortcuts.json`.
 4. Select a platform backend:
-   - Windows: `pynput` hotkeys plus `pywinauto` typing by default.
+   - Windows: `pynput` hotkeys plus `pynput` typing by default.
    - macOS development: `pynput` hotkeys plus `pynput` typing.
 5. Listen for `Ctrl+1`.
 6. When triggered, dispatch the action onto a worker queue rather than doing work inside the hotkey callback.
@@ -98,8 +98,8 @@ Example config:
 - [x] Create `quick_input/config.py` for loading shortcut mappings.
 - [x] Create `quick_input/backends/base.py` with `HotkeyBackend` and `TypingBackend` protocols.
 - [x] Create `quick_input/backends/pynput_hotkeys.py` using `pynput`.
-- [x] Create `quick_input/backends/pywinauto_typing.py` for default Windows typing.
-- [x] Create `quick_input/backends/pynput_typing.py` for optional Windows typing.
+- [x] Create `quick_input/backends/pynput_typing.py` for default Windows typing.
+- [x] Create `quick_input/backends/pywinauto_typing.py` for optional Windows typing.
 - [x] Create `quick_input/backends/macos_dev.py` using `pynput` for local development only.
 - [x] Create `quick_input/hotkeys.py` for backend-independent hotkey registration.
 - [x] Create `quick_input/typer.py` for backend-independent text typing.

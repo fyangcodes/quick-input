@@ -27,7 +27,7 @@ QUIT_HOTKEYS = ("ctrl+alt+esc",)
 class AppOptions:
     config_path: Path = DEFAULT_CONFIG_PATH
     type_delay_seconds: float = DEFAULT_TYPE_DELAY_SECONDS
-    typing_backend: str = "pywinauto"
+    typing_backend: str = "pynput"
 
 
 class QuickInputApp:
@@ -159,7 +159,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--typing-backend",
         choices=WINDOWS_TYPING_BACKENDS,
-        default="pywinauto",
+        default="pynput",
         help="Windows typing backend to use.",
     )
     parser.add_argument(

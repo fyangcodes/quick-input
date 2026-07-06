@@ -6,7 +6,11 @@ import types
 import pytest
 
 from quick_input.backends.pynput_typing import PynputTypingBackend
-from quick_input.backends.pynput_hotkeys import _to_pynput_hotkey
+from quick_input.backends.pynput_hotkeys import (
+    _HotkeyRegistration,
+    _split_ready_callbacks,
+    _to_pynput_hotkey,
+)
 from quick_input.backends.pywinauto_typing import PywinautoTypingBackend
 from quick_input.backends.select import select_backends
 
@@ -35,21 +39,7 @@ def test_select_backends_for_darwin(monkeypatch):
     assert backends.typing.__class__.__name__ == "MacOSDevTypingBackend"
 
 
-def test_select_backends_for_windows_uses_pywinauto_typing(monkeypatch):
-    pywinauto = types.ModuleType("pywinauto")
-    keyboard = types.ModuleType("pywinauto.keyboard")
-    keyboard.send_keys = lambda *_args, **_kwargs: None
-    pywinauto.keyboard = keyboard
-    monkeypatch.setitem(sys.modules, "pywinauto", pywinauto)
-    monkeypatch.setitem(sys.modules, "pywinauto.keyboard", keyboard)
-
-    backends = select_backends("Windows")
-
-    assert backends.hotkeys.__class__.__name__ == "PynputHotkeyBackend"
-    assert backends.typing.__class__.__name__ == "PywinautoTypingBackend"
-
-
-def test_select_backends_for_windows_can_use_pynput_typing(monkeypatch):
+def test_select_backends_for_windows_uses_pynput_typing(monkeypatch):
     pynput = types.ModuleType("pynput")
     keyboard = types.ModuleType("pynput.keyboard")
 
@@ -62,10 +52,24 @@ def test_select_backends_for_windows_can_use_pynput_typing(monkeypatch):
     monkeypatch.setitem(sys.modules, "pynput", pynput)
     monkeypatch.setitem(sys.modules, "pynput.keyboard", keyboard)
 
-    backends = select_backends("Windows", windows_typing_backend="pynput")
+    backends = select_backends("Windows")
 
     assert backends.hotkeys.__class__.__name__ == "PynputHotkeyBackend"
     assert backends.typing.__class__.__name__ == "PynputTypingBackend"
+
+
+def test_select_backends_for_windows_can_use_pywinauto_typing(monkeypatch):
+    pywinauto = types.ModuleType("pywinauto")
+    keyboard = types.ModuleType("pywinauto.keyboard")
+    keyboard.send_keys = lambda *_args, **_kwargs: None
+    pywinauto.keyboard = keyboard
+    monkeypatch.setitem(sys.modules, "pywinauto", pywinauto)
+    monkeypatch.setitem(sys.modules, "pywinauto.keyboard", keyboard)
+
+    backends = select_backends("Windows", windows_typing_backend="pywinauto")
+
+    assert backends.hotkeys.__class__.__name__ == "PynputHotkeyBackend"
+    assert backends.typing.__class__.__name__ == "PywinautoTypingBackend"
 
 
 def test_select_backends_for_windows_rejects_unknown_typing_backend():
@@ -76,6 +80,25 @@ def test_select_backends_for_windows_rejects_unknown_typing_backend():
 def test_pynput_hotkey_converter_wraps_named_keys():
     assert _to_pynput_hotkey("ctrl+alt+esc") == "<ctrl>+<alt>+<esc>"
     assert _to_pynput_hotkey("ctrl+enter") == "<ctrl>+<enter>"
+
+
+def test_pynput_hotkey_callback_waits_until_combo_keys_are_released():
+    callback = lambda: None
+    registration = _HotkeyRegistration(
+        key_set={"ctrl", "3"},
+        hotkey=object(),
+        callback=callback,
+    )
+
+    ready, pending = _split_ready_callbacks([callback], [registration], {"ctrl"})
+
+    assert ready == []
+    assert pending == [callback]
+
+    ready, pending = _split_ready_callbacks([callback], [registration], set())
+
+    assert ready == [callback]
+    assert pending == []
 
 
 def test_pywinauto_typing_uses_packet_mode_to_preserve_literal_text():
@@ -106,11 +129,15 @@ class FakeController:
         self.typed.append(text)
 
 
-def test_pynput_typing_types_text():
+def test_pynput_typing_types_text_character_by_character(monkeypatch):
     controller = FakeController()
     backend = PynputTypingBackend.__new__(PynputTypingBackend)
     backend._controller = controller
+    backend._inter_key_delay = 0.03
+    sleeps = []
+    monkeypatch.setattr("quick_input.backends.pynput_typing.time.sleep", sleeps.append)
 
     backend.type_text("A B")
 
-    assert controller.typed == ["A B"]
+    assert controller.typed == ["A", " ", "B"]
+    assert sleeps == [0.03, 0.03, 0.03]

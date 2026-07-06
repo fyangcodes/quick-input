@@ -43,8 +43,8 @@ Useful controls:
 
 ## Platform Backends
 
-- Windows: `pynput` for global hotkeys, with `pywinauto` typing by default.
-  `pynput` typing is also available with `--typing-backend pynput`.
+- Windows: `pynput` for global hotkeys and typing by default.
+  `pywinauto` typing is also available with `--typing-backend pywinauto`.
 - macOS: `pynput` development fallback for local config and routing checks.
 
 ## Required OS Permissions

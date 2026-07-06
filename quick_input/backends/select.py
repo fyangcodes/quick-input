@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from quick_input.backends.base import HotkeyBackend, TypingBackend
 
-WINDOWS_TYPING_BACKENDS = ("pywinauto", "pynput")
+WINDOWS_TYPING_BACKENDS = ("pynput", "pywinauto")
 
 
 @dataclass(frozen=True)
@@ -14,7 +14,7 @@ class BackendPair:
     typing: TypingBackend
 
 
-def select_backends(system: str | None = None, windows_typing_backend: str = "pywinauto") -> BackendPair:
+def select_backends(system: str | None = None, windows_typing_backend: str = "pynput") -> BackendPair:
     platform_name = system or platform.system()
 
     if platform_name == "Windows":
