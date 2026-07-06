@@ -1,5 +1,13 @@
 {
   "ctrl+1": "Anfangsbestände",
-  "ctrl+2": "KorrekturUnbarzahlungK",
-  "ctrl+3": "Korrektur Kassenfehlbestand C"
+  "ctrl+2": "Korrektur Unbarzahlung K",
+  "ctrl+3": "Korrektur Kassenfehlbestand K",
+  "ctrl+4": "Bankeinzahlung ",
+  "ctrl+5": "Korrektur Tresoreinzahlung K",
+  "ctrl+6": "Anfangsbestand",
+  "ctrl+7": "Falscheingabe",
+  "ctrl+8": "71002",
+  "ctrl+9": "70101",
+  "ctrl+0": "(SAP-)",
+  "ctrl+ß": "Tresorfehlbestand"
 }
