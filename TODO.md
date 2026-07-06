@@ -8,7 +8,7 @@ Build a small Python desktop app that listens for global hotkeys such as `Ctrl+1
 
 - Use Python as the main implementation language.
 - Design for Windows deployment first; macOS is only the development environment.
-- Use a platform adapter layer so Windows can use native APIs while macOS can use a lightweight development fallback.
+- Use a platform adapter layer so each OS can choose its own hotkey and typing implementation.
 - Use a global hotkey listener so the app can run in the background.
 - Inject text as real keyboard events, character by character or key by key.
 - Avoid all clipboard APIs for text insertion.
@@ -24,34 +24,26 @@ Build a small Python desktop app that listens for global hotkeys such as `Ctrl+1
 
 ## Library And API Decision
 
-- Confirmed current approach: use native Win32 APIs from Python for the Windows production backend.
-- Preferred Windows hotkey path: native Win32 `RegisterHotKey` through `ctypes`.
-- Preferred Windows typing path: native Win32 `SendInput` through `ctypes`.
+- Confirmed current approach: use `pynput` for global hotkeys and `pywinauto` for Windows typing by default.
+- Optional Windows typing path: `pynput`, selectable with `--typing-backend pynput`.
 - Preferred macOS development fallback: `pynput`, only to exercise config, hotkey routing, and basic typing locally.
 - Avoid using `keyboard` as the main app dependency even though its API is convenient, because its latest PyPI release is old and macOS support is experimental.
 - Avoid using `pyautogui` as the hotkey layer; it can type, but it is not the right primitive for global hotkeys.
 
-Decision summary: build the app around our own `HotkeyBackend` and `TypingBackend` interfaces. Use Win32 APIs for the real Windows implementation, and use `pynput` only as a macOS-friendly development backend.
+Decision summary: build the app around our own `HotkeyBackend` and `TypingBackend` interfaces. Use `pynput` for hotkeys and keep Windows typing selectable between `pywinauto` and `pynput`.
 
-## Confirmed Windows Background Behavior
+## Confirmed Background Behavior
 
-- `RegisterHotKey` registers specific hotkey combinations system-wide.
 - The Quick Input app can run in the background without a visible window.
-- If `hWnd=None`, Windows posts `WM_HOTKEY` messages to the registering thread's message queue.
-- The app must keep a Windows message loop alive to receive hotkey events.
 - The app only receives registered hotkeys such as `Ctrl+1`; it is not a general keylogger.
-- When `Ctrl+1` fires, the app should dispatch typing work to a worker queue, wait briefly for key release, then call `SendInput`.
+- When `Ctrl+1` fires, the app dispatches typing work to a worker queue after a short delay.
 - The currently focused window receives the generated keystrokes, including a remote desktop window if that is focused.
 - If another app already owns the same hotkey, registration may fail and should be logged clearly.
-- Use `MOD_NOREPEAT` so holding the hotkey does not repeatedly trigger insertion.
 
 ## Platform Notes
 
 - macOS requires Accessibility permission for apps that monitor hotkeys or synthesize keyboard input.
 - Windows remote desktop should receive synthetic keystrokes if the remote window is focused.
-- Windows native hotkey registration can use a message loop and `WM_HOTKEY`.
-- Windows hotkeys should use `MOD_NOREPEAT` where available to avoid repeated triggers while keys are held.
-- Windows text injection should use `SendInput` with Unicode keyboard events where possible.
 - Windows input injection can be blocked by integrity-level/UIPI restrictions; test normal and elevated target apps separately.
 - Linux support may vary by desktop session, especially Wayland.
 - Some remote desktop apps may filter synthetic events, so verification must include the actual target remote desktop client.
@@ -82,7 +74,7 @@ Decision summary: build the app around our own `HotkeyBackend` and `TypingBacken
 2. Detect the current platform.
 3. Load shortcuts from `shortcuts.json`.
 4. Select a platform backend:
-   - Windows: Win32 `RegisterHotKey` plus `SendInput`.
+   - Windows: `pynput` hotkeys plus `pywinauto` typing by default.
    - macOS development: `pynput` hotkeys plus `pynput` typing.
 5. Listen for `Ctrl+1`.
 6. When triggered, dispatch the action onto a worker queue rather than doing work inside the hotkey callback.
@@ -105,8 +97,9 @@ Example config:
 - [x] Create `quick_input/app.py` for startup and shutdown.
 - [x] Create `quick_input/config.py` for loading shortcut mappings.
 - [x] Create `quick_input/backends/base.py` with `HotkeyBackend` and `TypingBackend` protocols.
-- [x] Create `quick_input/backends/windows_hotkeys.py` using Win32 `RegisterHotKey`.
-- [x] Create `quick_input/backends/windows_typing.py` using Win32 `SendInput`.
+- [x] Create `quick_input/backends/pynput_hotkeys.py` using `pynput`.
+- [x] Create `quick_input/backends/pywinauto_typing.py` for default Windows typing.
+- [x] Create `quick_input/backends/pynput_typing.py` for optional Windows typing.
 - [x] Create `quick_input/backends/macos_dev.py` using `pynput` for local development only.
 - [x] Create `quick_input/hotkeys.py` for backend-independent hotkey registration.
 - [x] Create `quick_input/typer.py` for backend-independent text typing.
@@ -118,8 +111,6 @@ Example config:
 
 ## Risks To Validate Early
 
-- [ ] Confirm Windows native `RegisterHotKey` works without administrator permissions.
-- [ ] Confirm Windows native `SendInput` types into the chosen remote desktop client.
 - [ ] Confirm the chosen library can type into the specific remote desktop client.
 - [ ] Confirm special characters work correctly with the active keyboard layout.
 - [ ] Confirm `Ctrl+1` does not conflict with important app shortcuts.
@@ -140,7 +131,7 @@ Example config:
 ## Manual Test Checklist
 
 - [ ] On macOS development machine, run the `pynput` fallback and confirm config/hotkey routing works. See `MANUAL_TEST_CHECKLIST.md`.
-- [ ] On Windows, run the Win32 backend and confirm `Ctrl+1` is registered.
+- [ ] On Windows, run the app and confirm `Ctrl+1` is registered.
 - [ ] Open a local text editor and press `Ctrl+1`; configured text is typed.
 - [ ] Put unique text in the clipboard, press `Ctrl+1`, then paste elsewhere; clipboard text is unchanged.
 - [ ] Connect to the remote desktop, focus a text field, press `Ctrl+1`; text is typed inside the remote session.

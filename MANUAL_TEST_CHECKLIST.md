@@ -12,7 +12,7 @@
 ## Windows Production
 
 - Run `python -m quick_input --config shortcuts.json --verbose`.
-- Confirm `Ctrl+1` registers without administrator permissions.
+- Confirm `Ctrl+1` registers.
 - Focus a local text editor and press `Ctrl+1`; configured text is typed.
 - Put unique text in the clipboard, press `Ctrl+1`, then paste elsewhere;
   clipboard text is unchanged.

@@ -43,16 +43,14 @@ Useful controls:
 
 ## Platform Backends
 
-- Windows: native `RegisterHotKey` for global hotkeys and `SendInput` for
-  Unicode keyboard events.
+- Windows: `pynput` for global hotkeys, with `pywinauto` typing by default.
+  `pynput` typing is also available with `--typing-backend pynput`.
 - macOS: `pynput` development fallback for local config and routing checks.
 
 ## Required OS Permissions
 
-Windows usually does not require administrator permissions to register normal
-global hotkeys or send input to apps running at the same integrity level. Windows
-may block input into elevated applications from a non-elevated Quick Input
-process.
+Windows may block synthetic input into elevated applications from a non-elevated
+Quick Input process.
 
 macOS requires Accessibility permission for the terminal or packaged app that
 runs Quick Input. Grant it in System Settings, Privacy & Security,

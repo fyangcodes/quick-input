@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from quick_input.backends.base import HotkeyBackend, TypingBackend
 
-WINDOWS_TYPING_BACKENDS = ("pywinauto", "pynput", "win32")
+WINDOWS_TYPING_BACKENDS = ("pywinauto", "pynput")
 
 
 @dataclass(frozen=True)
@@ -18,11 +18,11 @@ def select_backends(system: str | None = None, windows_typing_backend: str = "py
     platform_name = system or platform.system()
 
     if platform_name == "Windows":
-        from quick_input.backends.windows_hotkeys import WindowsHotkeyBackend
+        from quick_input.backends.pynput_hotkeys import PynputHotkeyBackend
 
         typing_backend = _select_windows_typing_backend(windows_typing_backend)
         return BackendPair(
-            hotkeys=WindowsHotkeyBackend(),
+            hotkeys=PynputHotkeyBackend(),
             typing=typing_backend,
         )
 
@@ -46,8 +46,4 @@ def _select_windows_typing_backend(name: str) -> TypingBackend:
         from quick_input.backends.pynput_typing import PynputTypingBackend
 
         return PynputTypingBackend()
-    if name == "win32":
-        from quick_input.backends.windows_typing import WindowsTypingBackend
-
-        return WindowsTypingBackend()
     raise ValueError(f"Unsupported Windows typing backend: {name!r}")
