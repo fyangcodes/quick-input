@@ -8,6 +8,7 @@ from typing import Any
 
 LOGGER = logging.getLogger(__name__)
 HOTKEY_RELEASE_SETTLE_SECONDS = 0.25
+STALE_HOTKEY_RELEASE_TIMEOUT_SECONDS = 1.0
 PYNPUT_NAMED_KEYS = {
     "esc": "<esc>",
     "escape": "<esc>",
@@ -81,9 +82,27 @@ class PynputHotkeyBackend:
 
     def _defer_callback(self, callback: Callable[[], None]) -> Callable[[], None]:
         def wrapped() -> None:
-            self._pending_callbacks.append(callback)
+            with self._lock:
+                self._pending_callbacks.append(callback)
+            threading.Timer(
+                STALE_HOTKEY_RELEASE_TIMEOUT_SECONDS,
+                self._run_stale_callback,
+                args=(callback,),
+            ).start()
 
         return wrapped
+
+    def _run_stale_callback(self, callback: Callable[[], None]) -> None:
+        with self._lock:
+            try:
+                self._pending_callbacks.remove(callback)
+            except ValueError:
+                return
+        LOGGER.warning(
+            "Hotkey release events were not fully observed; triggering shortcut after %.1fs",
+            STALE_HOTKEY_RELEASE_TIMEOUT_SECONDS,
+        )
+        threading.Timer(HOTKEY_RELEASE_SETTLE_SECONDS, callback).start()
 
 
 @dataclass(frozen=True)

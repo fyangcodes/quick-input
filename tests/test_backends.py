@@ -10,6 +10,7 @@ from quick_input.backends.pynput_hotkeys import (
     _HotkeyRegistration,
     _split_ready_callbacks,
     _to_pynput_hotkey,
+    PynputHotkeyBackend,
 )
 from quick_input.backends.pywinauto_typing import PywinautoTypingBackend
 from quick_input.backends.select import select_backends
@@ -99,6 +100,33 @@ def test_pynput_hotkey_callback_waits_until_combo_keys_are_released():
 
     assert ready == [callback]
     assert pending == []
+
+
+def test_pynput_hotkey_stale_release_timeout_triggers_pending_callback(monkeypatch):
+    started_timers = []
+
+    class FakeTimer:
+        def __init__(self, interval, function, args=()):
+            self.interval = interval
+            self.function = function
+            self.args = args
+
+        def start(self):
+            started_timers.append(self)
+            self.function(*self.args)
+
+    monkeypatch.setattr("quick_input.backends.pynput_hotkeys.threading.Timer", FakeTimer)
+    backend = PynputHotkeyBackend()
+    calls = []
+
+    callback = lambda: calls.append("typed")
+    backend._pending_callbacks.append(callback)
+
+    backend._run_stale_callback(callback)
+
+    assert calls == ["typed"]
+    assert backend._pending_callbacks == []
+    assert len(started_timers) == 1
 
 
 def test_pywinauto_typing_uses_packet_mode_to_preserve_literal_text():
